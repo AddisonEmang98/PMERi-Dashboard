@@ -43,7 +43,7 @@ with col1:
 
 with col2:
     co2 = st.number_input("CO₂ (ppm)", 0.0, 5000.0, 600.0, 1.0)
-    hcho = st.number_input("HCHO (ppm)", 0.0, 1.0, 0.05, 0.001)
+    hcho = st.number_input("HCHO (ppm)", 0.0, 0.3, 0.05, 0.001, format="%.3f")
 
 st.header("Thermal Stressors")
 
