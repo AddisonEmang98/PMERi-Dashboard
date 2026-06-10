@@ -1,6 +1,6 @@
 import pandas as pd
 import joblib
-from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import cross_val_score, StratifiedKFold
 from sklearn.metrics import accuracy_score, f1_score
 
 # =========================
@@ -19,11 +19,13 @@ model = joblib.load("PMERi_RandomForest_Model.pkl")
 # =========================
 # 3. Cross-validation (F1 Macro)
 # =========================
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
 cv_scores = cross_val_score(
     model,
     X,
     y,
-    cv=5,
+    cv=cv,
     scoring="f1_macro"
 )
 
@@ -41,7 +43,9 @@ classifier_acc = accuracy_score(y, y_pred)
 metrics = {
     "classifier_f1": float(classifier_f1),
     "classifier_accuracy": float(classifier_acc),
+
     "classifier_cv_mean": float(cv_scores.mean()),
+    "classifier_cv_std": float(cv_scores.std()),
     "classifier_cv_folds": cv_scores.tolist(),
 
     # regressor values (from your regression script)
@@ -57,6 +61,8 @@ joblib.dump(metrics, "model_metrics.pkl")
 
 print("\n========== MODEL METRICS SAVED ==========")
 print("Classifier F1:", classifier_f1)
+print("Classifier Accuracy:", classifier_acc)
 print("CV Mean F1:", cv_scores.mean())
+print("CV Std F1:", cv_scores.std())
 print("CV Folds:", cv_scores.tolist())
 print("Metrics saved to model_metrics.pkl")
