@@ -1,218 +1,396 @@
-import streamlit as st
-import pandas as pd
-import joblib
 import os
 from datetime import datetime
+import joblib
+import pandas as pd
+import streamlit as st
+
+def get_pmeri_level(score):
+    if score < 0.4:
+        return "LOW"
+    elif score < 0.7:
+        return "MODERATE"
+    else:
+        return "HIGH"
 
 # =====================================
-# Load Model
+# LOAD MODELS
 # =====================================
-model = joblib.load("PMERi_RandomForest_Model.pkl")
+clf_model = joblib.load("PMERi_RandomForest_Model.pkl")
 
+metrics = None
+if os.path.exists("model_metrics.pkl"):
+    metrics = joblib.load("model_metrics.pkl")
+
+df = pd.read_csv("Corrected_PMERi_Data.csv")
 LOG_FILE = "predictions_log.csv"
 
 # =====================================
-# Normalization (DOSH-CALIBRATED + CLIPPED)
+# NORMALIZATION
 # =====================================
 def normalize(value, vmin, vmax):
-    norm = (value - vmin) / (vmax - vmin)
-    return max(0.0, min(1.0, norm))  # clip to [0,1]
+    return max(0.0, min(1.0, (value - vmin) / (vmax - vmin)))
 
 # =====================================
-# Page Config
+# PAGE CONFIG
 # =====================================
-st.set_page_config(
-    page_title="PMERi Dashboard",
-    page_icon="🏭",
-    layout="centered"
-)
+st.set_page_config(page_title="PMERi DSS", layout="wide")
 
-st.title("🏭 PMERi Dashboard")
-st.write("Input sensor values into monitoring system.")
+st.title("⚙️ PMERi Dashboard")
+st.caption("Predictive Model for Environmental Risk Index")
 
 # =====================================
-# INPUTS
+# MODEL PERFORMANCE (THESIS SECTION)
 # =====================================
-st.header("Air Quality Stressors")
+st.header("Model Performance (Offline Evaluation)")
+
+if metrics:
+
+    # MAIN METRICS ROW
+    col1, col2, col3, col4, col5 = st.columns(5)
+
+    col1.metric("Classifier F1-Macro", f"{metrics['classifier_f1']:.3f}")
+    col2.metric("Cross-Validation (Mean)", f"{metrics['classifier_cv_mean']:.3f}")
+    col3.metric("R² Score", f"{metrics['regressor_r2']:.3f}")
+    col4.metric("MAE", f"{metrics['regressor_mae']:.4f}")
+    col5.metric("RMSE", f"{metrics['regressor_rmse']:.4f}")
+
+    # 🔥 NEW SECTION: CV FOLDS AS COLUMNS (NOT LINE CHART)
+    st.subheader("5-Fold Cross-Validation Results")
+
+    cv_cols = st.columns(5)
+
+    for i, cv_score in enumerate(metrics["classifier_cv_folds"]):
+        cv_cols[i].metric(f"Fold {i+1}", f"{cv_score:.3f}")
+
+else:
+    st.warning("Model metrics file not found. Run training script first.")
+
+# =====================================
+# INPUT SECTION
+# =====================================
+st.header("Real-Time Environmental Input")
 
 col1, col2 = st.columns(2)
 
 with col1:
-    pm25 = st.number_input("PM2.5 (µg/m³)", 0.0, 300.0, 50.0, 1.0)
-    pm10 = st.number_input("PM10 (µg/m³)", 0.0, 300.0, 80.0, 1.0)
+    pm25 = st.number_input("PM2.5", 0.0, 300.0, 50.0)
+    pm10 = st.number_input("PM10", 0.0, 300.0, 80.0)
+    co2 = st.number_input("CO2", 0.0, 5000.0, 600.0)
+    hcho = st.number_input("HCHO", 0.0, 0.3, 0.05)
 
 with col2:
-    co2 = st.number_input("CO₂ (ppm)", 0.0, 5000.0, 600.0, 1.0)
-    hcho = st.number_input("HCHO (ppm)", 0.0, 0.3, 0.05, 0.001, format="%.3f")
-
-st.header("Thermal Stressors")
-
-col3, col4 = st.columns(2)
-
-with col3:
-    temp_raw = st.number_input("Temperature (°C)", 0.0, 60.0, 25.0, 0.1)
-
-with col4:
-    humidity_raw = st.number_input("Humidity (%)", 0.0, 100.0, 60.0, 0.1)
-
-st.header("Physical Stressors")
-
-col5, col6 = st.columns(2)
-
-with col5:
-    noise_raw = st.number_input("Noise (dBA)", 0.0, 120.0, 70.0, 0.1)
-
-with col6:
-    lighting_raw = st.number_input("Lighting (Lux)", 0.0, 1000.0, 300.0, 1.0)
+    temp = st.number_input("Temperature", 0.0, 60.0, 25.0)
+    humidity = st.number_input("Humidity", 0.0, 100.0, 60.0)
+    noise = st.number_input("Noise", 0.0, 120.0, 70.0)
+    lighting = st.number_input("Lighting", 0.0, 1000.0, 300.0)
 
 # =====================================
-# Prediction
+# PREDICTION
 # =====================================
-if st.button("Predict Risk"):
+if st.button("Run PMERi Analysis"):
+
+    # AQI
+    aqi = (
+        normalize(pm25, 15, 75) +
+        normalize(pm10, 15, 70) +
+        normalize(co2, 0, 1000) +
+        normalize(hcho, 0, 0.1)
+    ) / 4
+
+    input_data = pd.DataFrame([{
+        "Air Quality Index (AQI)": aqi,
+        "Temperature (C)": normalize(temp, 23, 32.5),
+        "Humidity (%)": normalize(humidity, 40, 70),
+        "Noise (dBA)": normalize(noise, 0, 85),
+        "Lighting (LUX)": normalize(lighting, 200, 750)
+    }])
+
+    prediction = clf_model.predict(input_data)
+    proba = clf_model.predict_proba(input_data)
+
+    risk_map = {0: "Low", 1: "Moderate", 2: "High"}
+    risk = prediction[0]
+
+    pmeri_score = input_data.mean(axis=1).iloc[0]
+    pmeri_level = get_pmeri_level(pmeri_score)
+    rf_level = risk_map[risk]
+    alarm_trigger = False
+    alarm_message = None
+
+    if pmeri_score < 0.4:
+        pmeri_category = "Low Risk"
+    elif pmeri_score < 0.7:
+        pmeri_category = "Moderate Risk"
+    else:
+        pmeri_category = "High Risk"
+        alarm_trigger = True
+        alarm_message = "HIGH RISK DETECTED: Immediate action required!"
+
+    # =====================================
+    # ALARM SYSTEM (TOP BANNER)
+    # =====================================
+    if alarm_trigger:
+        st.error("🚨 HIGH RISK ALERT DETECTED — IMMEDIATE ACTION REQUIRED")
+
+        st.markdown(
+            """
+            <audio autoplay>
+            <source src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg" type="audio/ogg">
+            </audio>
+            """,
+            unsafe_allow_html=True
+        )
+
+    elif pmeri_level == "MODERATE" or rf_level == "Moderate":
+        st.warning("⚠️ MODERATE RISK — MONITOR CONDITIONS CLOSELY")
+
+    else:
+        st.success("🟢 SAFE CONDITIONS — NO IMMEDIATE RISK")
 
     # ================================
-    # AQI Construction
+    # ALARM LOGIC (BOTH TRIGGERS)
     # ================================
-    pm25_n = normalize(pm25, 15, 75)
-    pm10_n = normalize(pm10, 15, 70)
-    co2_n = normalize(co2, 0, 1000)
-    hcho_n = normalize(hcho, 0, 0.100)
-
-    aqi = (pm25_n + pm10_n + co2_n + hcho_n) / 4
+    alarm_trigger = (pmeri_level == "HIGH") or (rf_level == "High")
 
     # ================================
-    # Thermal
+    # PMERi CATEGORY CLASSIFICATION
     # ================================
-    temp = normalize(temp_raw, 23, 32.5)
-    humidity = normalize(humidity_raw, 40, 70)
+    if pmeri_score < 0.4:
+        pmeri_category = "Low Risk"
+        color = "green"
+    elif pmeri_score < 0.7:
+        pmeri_category = "Moderate Risk"
+        color = "orange"
+    else:
+        pmeri_category = "High Risk"
+        color = "red"
 
-    # ================================
-    # Physical
-    # ================================
-    noise = normalize(noise_raw, 0, 85)
-    lighting = normalize(lighting_raw, 200, 750)
+    # =====================================
+    # REAL-TIME DASHBOARD
+    # =====================================
+    st.header("Live Risk Monitoring")
 
-    # ================================
-    # Model Input
-    # ================================
-    input_data = pd.DataFrame({
-        "Air Quality Index (AQI)": [aqi],
-        "Temperature (C)": [temp],
-        "Humidity (%)": [humidity],
-        "Noise (dBA)": [noise],
-        "Lighting (LUX)": [lighting]
+    colA, colB, colC, colD = st.columns(4)
+
+    colA.metric("PMERi Score", f"{pmeri_score:.3f}")
+    colB.metric("PMERi Category", pmeri_category)
+    colC.metric("RF Risk Class", risk_map[risk])
+    colD.metric("Confidence", f"{max(proba[0])*100:.2f}%")
+
+    # =====================================
+    # RISK GAUGE (INTERACTIVE - STREAMLIT NATIVE)
+    # =====================================
+    st.subheader("Risk Gauge")
+
+    # Convert PMERi score to percentage scale
+    gauge_value = pmeri_score * 100
+
+    # Interactive progress bar
+    st.progress(int(gauge_value))
+
+    # Risk interpretation (aligned with your classifier)
+    if risk == 0:
+        st.success(f"🟢 LOW RISK ({gauge_value:.1f}%)")
+        st.write("Safe operating conditions. No immediate intervention required.")
+
+    elif risk == 1:
+        st.warning(f"🟡 MODERATE RISK ({gauge_value:.1f}%)")
+        st.write("Monitor environmental conditions! Preventive action recommended.")
+
+    else:
+        st.error(f"🔴 HIGH RISK ({gauge_value:.1f}%)")
+        st.write("Critical conditions detected! Immediate action required.")
+
+    # =====================================
+    # PROBABILITY
+    # =====================================
+    st.subheader("Prediction Probability Distribution")
+
+    for cls, p in zip(clf_model.classes_, proba[0]):
+        st.write(f"{risk_map[cls]}: {p*100:.2f}%")
+
+    # =====================================
+    # FEATURE IMPORTANCE
+    # =====================================
+    st.subheader("Feature Importance (Model Explainability)")
+
+    fi = pd.Series(clf_model.feature_importances_, index=input_data.columns)
+    st.bar_chart(fi.sort_values(ascending=False))
+
+    # =====================================
+    # 📊 RISK DISTRIBUTION (INTERACTIVE PIE CHART)
+    # =====================================
+    st.markdown("---")
+    st.subheader("Dataset Risk Distribution")
+
+    # 1. Verify and read the baseline training dataset
+    if os.path.exists("Corrected_PMERi_Data.csv"):
+        df_train = pd.read_csv("Corrected_PMERi_Data.csv")
+        risk_counts = df_train["Risk Label"].value_counts()
+
+        # 2. Reconstruct your chart data into a structured pandas DataFrame
+        chart_df = pd.DataFrame([
+            {"Category": "Low Risk", "Count": int(risk_counts.get(0, 0))},
+            {"Category": "Moderate Risk", "Count": int(risk_counts.get(1, 0))},
+            {"Category": "High Risk", "Count": int(risk_counts.get(2, 0))}
+        ])
+
+        # 3. Build the interactive Plotly pie chart
+        import plotly.express as px
+
+        fig = px.pie(
+            chart_df,
+            values="Count",
+            names="Category",
+            color="Category",
+            # Custom OSH-themed color matching mapping values
+            color_discrete_map={
+                "Low Risk": "#2ecc71",  # Emerald Green
+                "Moderate Risk": "#f1c40f",  # Warning Yellow/Orange
+                "High Risk": "#e74c3c"  # Danger Red
+            },
+            # CHANGED: Explicitly force the legend hierarchy order
+            category_orders={"Category": ["Low Risk", "Moderate Risk", "High Risk"]},
+            hole=0.35
+        )
+
+        # 4. Show both the exact count and percentage directly on the slices
+        fig.update_traces(textinfo="percent+value", textfont_size=12)
+
+        # CHANGED: Ensure legend layout stays fixed in the specified category order
+        fig.update_layout(
+            showlegend=True,
+            legend=dict(traceorder="normal")
+        )
+
+        # 5. Render the chart inside Streamlit
+        st.plotly_chart(fig, use_container_width=True)
+
+        st.write("Interactive distribution of baseline risk exposure records utilized during model training phases.")
+    else:
+        st.error(
+            "Baseline training file 'Corrected_PMERi_Data.csv' was not found in the local directory. Unable to display distribution analytics.")
+
+    # =====================================
+    # CORRELATION ANALYSIS
+    # =====================================
+    import plotly.express as px
+
+    st.header("Correlation Analysis")
+
+    # =====================================
+    # 1. Environmental Correlation Matrix
+    # =====================================
+    st.subheader("A. Environmental Correlation Matrix")
+
+    env_variables = [
+        "Air Quality Index (AQI)",
+        "Temperature (C)",
+        "Humidity (%)",
+        "Noise (dBA)",
+        "Lighting (LUX)"
+    ]
+
+    env_corr = df[env_variables].corr()
+
+    fig_corr = px.imshow(
+        env_corr,
+        text_auto=".2f",
+        aspect="auto",
+        color_continuous_scale="RdBu_r",
+        title="Correlation Between Environmental Stressors"
+    )
+
+    fig_corr.update_layout(
+        height=650,
+        xaxis_title="Environmental Variables",
+        yaxis_title="Environmental Variables"
+    )
+
+    st.plotly_chart(
+        fig_corr,
+        use_container_width=True
+    )
+
+    st.caption(
+        "This matrix shows the relationships among the environmental stressors used in the PMERi system."
+    )
+
+    # =====================================
+    # 2. Pearson Correlation vs PMERi
+    # =====================================
+    st.subheader("B. Pearson Correlation vs PMERi Score")
+
+    pmeri_corr = (
+        df[
+            [
+                "Air Quality Index (AQI)",
+                "Temperature (C)",
+                "Humidity (%)",
+                "Noise (dBA)",
+                "Lighting (LUX)",
+                "PMERi Score"
+            ]
+        ]
+        .corr()["PMERi Score"]
+        .drop("PMERi Score")
+        .sort_values(ascending=False)
+    )
+
+    corr_df = pd.DataFrame({
+        "Environmental Variable": pmeri_corr.index,
+        "Correlation": pmeri_corr.values
     })
 
-    # ================================
-    # Raw Display
-    # ================================
-    st.subheader("Raw Sensor Inputs")
+    fig_pmeri = px.bar(
+        corr_df,
+        x="Environmental Variable",
+        y="Correlation",
+        text="Correlation",
+        title="Pearson Correlation Between Environmental Variables and PMERi Score"
+    )
 
-    st.dataframe(pd.DataFrame([{
-        "PM2.5": pm25,
-        "PM10": pm10,
-        "CO2": co2,
-        "HCHO": hcho,
-        "Temperature": temp_raw,
-        "Humidity": humidity_raw,
-        "Noise": noise_raw,
-        "Lighting": lighting_raw
-    }]))
+    fig_pmeri.update_traces(
+        texttemplate="%{text:.3f}",
+        textposition="outside"
+    )
 
-    # ================================
-    # Prediction (FINAL DECISION)
-    # ================================
-    prediction = model.predict(input_data)
-    probabilities = model.predict_proba(input_data)
+    fig_pmeri.update_layout(
+        height=500,
+        yaxis_title="Pearson Correlation Coefficient",
+        xaxis_title="Environmental Variable"
+    )
 
-    risk_mapping = {0: "Low", 1: "Moderate", 2: "High"}
-    predicted_label = risk_mapping.get(prediction[0], "Unknown")
+    st.plotly_chart(
+        fig_pmeri,
+        use_container_width=True
+    )
 
-    # ================================
-    # PMERi (SUPPORTING ONLY)
-    # ================================
-    pmeri_live = input_data.mean(axis=1).iloc[0]
+    st.caption(
+        "Higher absolute correlation values indicate stronger linear relationships with the PMERi Score."
+    )
 
-    st.subheader("PMERi Index (Supporting Metric)")
-    st.metric("PMERi (Normalized)", f"{pmeri_live:.3f}")
-
-    if pmeri_live < 0.4:
-        pmeri_cat = "Low Risk"
-    elif pmeri_live < 0.7:
-        pmeri_cat = "Moderate Risk"
-    else:
-        pmeri_cat = "High Risk"
-
-    st.write(f"PMERi Category: **{pmeri_cat}**")
-
-    # ================================
-    # FINAL RISK (RF ONLY)
-    # ================================
-    st.subheader("Final Risk Assessment (Random Forest)")
-
-    if predicted_label == "Low":
-        st.success(f"FINAL RISK: {predicted_label}")
-    elif predicted_label == "Moderate":
-        st.warning(f"FINAL RISK: {predicted_label}")
-    else:
-        st.error(f"FINAL RISK: {predicted_label}")
-
-    st.write("Model Confidence:")
-
-    for cls, prob in zip(model.classes_, probabilities[0]):
-        label = risk_mapping.get(cls, str(cls))
-        st.write(f"{label}: {prob*100:.3f}%")
-        st.progress(prob)
-
-    # ================================
-    # Logging
-    # ================================
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    log_entry = pd.DataFrame([{
-        "Timestamp": timestamp,
-        "PM2.5": pm25,
-        "PM10": pm10,
-        "CO2": co2,
-        "HCHO": hcho,
-        "Temperature": temp_raw,
-        "Humidity": humidity_raw,
-        "Noise": noise_raw,
-        "Lighting": lighting_raw,
-        "AQI": aqi,
-        "Prediction": predicted_label,
-        "PMERi": pmeri_live,
-        "PMERi Category": pmeri_cat
+    # =====================================
+    # LOGGING
+    # =====================================
+    log = pd.DataFrame([{
+        "Time": datetime.now(),
+        "Prediction": risk_map[risk],
+        "PMERi": pmeri_score
     }])
 
     if os.path.exists(LOG_FILE):
-        log_entry.to_csv(LOG_FILE, mode="a", header=False, index=False)
+        log.to_csv(LOG_FILE, mode="a", header=False, index=False)
     else:
-        log_entry.to_csv(LOG_FILE, index=False)
+        log.to_csv(LOG_FILE, index=False)
 
-    st.success("Data logged successfully.")
+    st.success("Prediction logged successfully.")
 
-# =====================================
-# Feature Importance
-# =====================================
-st.markdown("---")
-st.subheader("Feature Importance")
-st.image("Feature_Importance.png", use_container_width=True)
-
-# =====================================
-# Footer
-# =====================================
-st.markdown("---")
-
-st.write(
-    "Developed as part of the Bachelor of Mechanical Engineering (Honours) "
-    "at University Malaysia Sarawak (UNIMAS)."
-)
-
-st.write(
-    "Supervisor: Ts. Mohd. Azrin bin Mohd. Said"
-)
-
-st.write(
-    "FYP Student: Addison Ding Emang (83044)"
-)
+    # =====================================
+    # ACADEMIC FOOTER (THESIS METADATA)
+    # =====================================
+    st.markdown("---")
+    st.write(
+        "Developed as part of the requirement for Bachelor of Mechanical Engineering (Honours) at University Malaysia Sarawak (UNIMAS).")
+    st.write("Supervisor: Ts. Mohd. Azrin bin Mohd. Said")
+    st.write("FYP Student: Addison Ding Emang (83044)")
