@@ -41,26 +41,129 @@ st.caption("Predictive Model for Environmental Risk Index")
 # =====================================
 # MODEL PERFORMANCE (THESIS SECTION)
 # =====================================
-st.header("Model Performance (Offline Evaluation)")
+st.header("Model Performance Matrix")
 
 if metrics:
+    # High-contrast CSS styling injection for clean thesis table borders
+    st.markdown("""
+        <style>
+        .thesis-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+        .thesis-table th {
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-weight: bold;
+            padding: 12px;
+            text-align: left;
+            border: 2px solid #3b82f6; /* High-contrast vibrant blue lines */
+        }
+        .thesis-table td {
+            padding: 12px;
+            border: 2px solid #3b82f6; /* High-contrast vibrant blue lines */
+            color: inherit;
+        }
+        .thesis-table tr:nth-child(even) {
+            background-color: rgba(59, 130, 246, 0.05); /* Soft background alternate tint */
+        }
+        </style>
+    """, unsafe_allow_html=True)
 
-    # MAIN METRICS ROW
-    col1, col2, col3, col4, col5 = st.columns(5)
+    st.subheader("Classification & Regression Evaluation Summary")
 
-    col1.metric("Classifier F1-Macro", f"{metrics['classifier_f1']:.3f}")
-    col2.metric("Cross-Validation (Mean)", f"{metrics['classifier_cv_mean']:.3f}")
-    col3.metric("R² Score", f"{metrics['regressor_r2']:.3f}")
-    col4.metric("MAE", f"{metrics['regressor_mae']:.4f}")
-    col5.metric("RMSE", f"{metrics['regressor_rmse']:.4f}")
+    # Calculate Mean Squared Error from raw RMSE footprint
+    mse_value = metrics['regressor_rmse'] ** 2
 
-    # 🔥 NEW SECTION: CV FOLDS AS COLUMNS (NOT LINE CHART)
-    st.subheader("5-Fold Cross-Validation Results")
+    html_metrics_table = f"""
+    <table class="thesis-table">
+        <thead>
+            <tr>
+                <th>Model Architecture Type</th>
+                <th>Evaluation Parameter</th>
+                <th>Statistical Output Value</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td rowspan="6"><b>Classification Framework</b><br>(Discrete Risk Label Predictor)</td>
+                <td>Classifier Accuracy</td>
+                <td>{metrics['classifier_accuracy']:.3f}</td>
+            </tr>
+            <tr>
+                <td>Classifier F1-Macro</td>
+                <td>{metrics['classifier_f1']:.3f}</td>
+            </tr>
+            <tr>
+                <td>Precision</td>
+                <td>{metrics['classifier_precision']:.3f}</td>
+            </tr>
+            <tr>
+                <td>Recall</td>
+                <td>{metrics['classifier_recall']:.3f}</td>
+            </tr>
+            <tr>
+                <td>Cross-Validation Mean (F1-Macro)</td>
+                <td>{metrics['classifier_cv_mean']:.3f}</td>
+            </tr>
+            <tr>
+                <td>Cross-Validation Standard Deviation</td>
+                <td>{metrics['classifier_cv_std']:.3f}</td>
+            </tr>
+            <tr>
+                <td rowspan="4"><b>Regression Framework</b><br>(Continuous PMERi Predictor)</td>
+                <td>R² Score</td>
+                <td>{metrics['regressor_r2']:.3f}</td>
+            </tr>
+            <tr>
+                <td>Mean Squared Error (MSE)</td>
+                <td>{mse_value:.5f}</td>
+            </tr>
+            <tr>
+                <td>Mean Absolute Error (MAE)</td>
+                <td>{metrics['regressor_mae']:.4f}</td>
+            </tr>
+            <tr>
+                <td>Root Mean Squared Error (RMSE)</td>
+                <td>{metrics['regressor_rmse']:.4f}</td>
+            </tr>
+        </tbody>
+    </table>
+    """
+    st.markdown(html_metrics_table, unsafe_allow_html=True)
 
-    cv_cols = st.columns(5)
+    # =====================================
+    # 5-FOLD CROSS-VALIDATION BREAKDOWN TABLE
+    # =====================================
+    st.subheader("Stratified 5-Fold Cross-Validation Breakdown Matrix")
 
-    for i, cv_score in enumerate(metrics["classifier_cv_folds"]):
-        cv_cols[i].metric(f"Fold {i+1}", f"{cv_score:.3f}")
+    cv_folds = metrics["classifier_cv_folds"]
+    html_cv_table = f"""
+    <table class="thesis-table" style="text-align: center;">
+        <thead>
+            <tr>
+                <th style="text-align: center;">Fold 1</th>
+                <th style="text-align: center;">Fold 2</th>
+                <th style="text-align: center;">Fold 3</th>
+                <th style="text-align: center;">Fold 4</th>
+                <th style="text-align: center;">Fold 5</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><b>{cv_folds[0]:.3f}</b></td>
+                <td><b>{cv_folds[1]:.3f}</b></td>
+                <td><b>{cv_folds[2]:.3f}</b></td>
+                <td><b>{cv_folds[3]:.3f}</b></td>
+                <td><b>{cv_folds[4]:.3f}</b></td>
+            </tr>
+        </tbody>
+    </table>
+    """
+    st.markdown(html_cv_table, unsafe_allow_html=True)
 
 else:
     st.warning("Model metrics file not found. Run training script first.")
