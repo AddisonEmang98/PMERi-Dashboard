@@ -110,8 +110,9 @@ if metrics is not None:
                 <td>Cross-Validation Standard Deviation</td>
                 <td>{metrics["classifier_cv_std"]:.3f}</td>
             </tr>
+
             <tr>
-                <td rowspan="4"><b>Regression Framework</b><br>Continuous PMERi Score Predictor</td>
+                <td rowspan="6"><b>Regression Framework</b><br>Continuous PMERi Score Predictor</td>
                 <td>R² Score</td>
                 <td>{metrics["regressor_r2"]:.3f}</td>
             </tr>
@@ -126,6 +127,14 @@ if metrics is not None:
             <tr>
                 <td>Root Mean Squared Error</td>
                 <td>{metrics["regressor_rmse"]:.4f}</td>
+            </tr>
+            <tr>
+                <td>Cross-Validation Mean</td>
+                <td>{metrics["regressor_cv_mean"]:.3f}</td>
+            </tr>
+            <tr>
+                <td>Cross-Validation Standard Deviation</td>
+                <td>{metrics["regressor_cv_std"]:.3f}</td>
             </tr>
         </tbody>
     </table>
