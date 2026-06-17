@@ -44,32 +44,33 @@ st.caption("Predictive Model for Environmental Risk Index")
 st.header("Model Performance Matrix")
 
 if metrics is not None:
+
     st.markdown("""
-        <style>
-        .thesis-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-            margin-bottom: 30px;
-            font-size: 16px;
-        }
-        .thesis-table th {
-            background-color: #0f172a;
-            color: #f8fafc;
-            font-weight: bold;
-            padding: 12px;
-            text-align: left;
-            border: 2px solid #3b82f6;
-        }
-        .thesis-table td {
-            padding: 12px;
-            border: 2px solid #3b82f6;
-            color: inherit;
-        }
-        .thesis-table tr:nth-child(even) {
-            background-color: rgba(59, 130, 246, 0.05);
-        }
-        </style>
+    <style>
+    .thesis-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+        margin-bottom: 30px;
+        font-size: 16px;
+    }
+    .thesis-table th {
+        background-color: #0f172a;
+        color: #f8fafc;
+        font-weight: bold;
+        padding: 12px;
+        text-align: left;
+        border: 2px solid #3b82f6;
+    }
+    .thesis-table td {
+        padding: 12px;
+        border: 2px solid #3b82f6;
+        color: inherit;
+    }
+    .thesis-table tr:nth-child(even) {
+        background-color: rgba(59, 130, 246, 0.05);
+    }
+    </style>
     """, unsafe_allow_html=True)
 
     mse_value = metrics["regressor_rmse"] ** 2
@@ -109,7 +110,6 @@ if metrics is not None:
                 <td>Cross-Validation Standard Deviation</td>
                 <td>{metrics["classifier_cv_std"]:.3f}</td>
             </tr>
-
             <tr>
                 <td rowspan="4"><b>Regression Framework</b><br>Continuous PMERi Score Predictor</td>
                 <td>R² Score</td>
@@ -133,9 +133,6 @@ if metrics is not None:
 
     st.markdown(html_metrics_table, unsafe_allow_html=True)
 
-    # =====================================
-    # 5-FOLD CROSS-VALIDATION BREAKDOWN
-    # =====================================
     st.subheader("5-Fold Cross-Validation Breakdown")
 
     classifier_cv_folds = metrics.get("classifier_cv_folds", [])
@@ -153,31 +150,11 @@ if metrics is not None:
                 </tr>
             </thead>
             <tbody>
-                <tr>
-                    <td>Fold 1</td>
-                    <td>{classifier_cv_folds[0]:.3f}</td>
-                    <td>{regressor_cv_folds[0]:.3f}</td>
-                </tr>
-                <tr>
-                    <td>Fold 2</td>
-                    <td>{classifier_cv_folds[1]:.3f}</td>
-                    <td>{regressor_cv_folds[1]:.3f}</td>
-                </tr>
-                <tr>
-                    <td>Fold 3</td>
-                    <td>{classifier_cv_folds[2]:.3f}</td>
-                    <td>{regressor_cv_folds[2]:.3f}</td>
-                </tr>
-                <tr>
-                    <td>Fold 4</td>
-                    <td>{classifier_cv_folds[3]:.3f}</td>
-                    <td>{regressor_cv_folds[3]:.3f}</td>
-                </tr>
-                <tr>
-                    <td>Fold 5</td>
-                    <td>{classifier_cv_folds[4]:.3f}</td>
-                    <td>{regressor_cv_folds[4]:.3f}</td>
-                </tr>
+                <tr><td>Fold 1</td><td>{classifier_cv_folds[0]:.3f}</td><td>{regressor_cv_folds[0]:.3f}</td></tr>
+                <tr><td>Fold 2</td><td>{classifier_cv_folds[1]:.3f}</td><td>{regressor_cv_folds[1]:.3f}</td></tr>
+                <tr><td>Fold 3</td><td>{classifier_cv_folds[2]:.3f}</td><td>{regressor_cv_folds[2]:.3f}</td></tr>
+                <tr><td>Fold 4</td><td>{classifier_cv_folds[3]:.3f}</td><td>{regressor_cv_folds[3]:.3f}</td></tr>
+                <tr><td>Fold 5</td><td>{classifier_cv_folds[4]:.3f}</td><td>{regressor_cv_folds[4]:.3f}</td></tr>
             </tbody>
         </table>
         """
@@ -185,10 +162,7 @@ if metrics is not None:
         st.markdown(html_cv_table, unsafe_allow_html=True)
 
     else:
-        st.warning(
-            "5-fold CV breakdown is incomplete. Check that model_metrics.pkl contains both "
-            "'classifier_cv_folds' and 'regressor_cv_folds'."
-        )
+        st.warning("5-fold CV values are incomplete in model_metrics.pkl.")
 
 else:
     st.warning("model_metrics.pkl not found. Model performance table will not be displayed.")
