@@ -142,6 +142,7 @@ if metrics is not None:
     regressor_cv_folds = metrics.get("regressor_cv_folds", [])
 
     if len(classifier_cv_folds) == 5 and len(regressor_cv_folds) == 5:
+
         html_cv_table = f"""
         <table class="thesis-table">
             <thead>
@@ -152,32 +153,31 @@ if metrics is not None:
                 </tr>
             </thead>
             <tbody>
-                <tr><td>Fold 1</td><td>{classifier_cv_folds[0]:.3f}</td><td>{regressor_cv_folds[0]:.3f}</td></tr>
-                <tr><td>Fold 2</td><td>{classifier_cv_folds[1]:.3f}</td><td>{regressor_cv_folds[1]:.3f}</td></tr>
-                <tr><td>Fold 3</td><td>{classifier_cv_folds[2]:.3f}</td><td>{regressor_cv_folds[2]:.3f}</td></tr>
-                <tr><td>Fold 4</td><td>{classifier_cv_folds[3]:.3f}</td><td>{regressor_cv_folds[3]:.3f}</td></tr>
-                <tr><td>Fold 5</td><td>{classifier_cv_folds[4]:.3f}</td><td>{regressor_cv_folds[4]:.3f}</td></tr>
-            </tbody>
-        </table>
-        """
-
-        st.markdown(html_cv_table, unsafe_allow_html=True)
-
-    elif len(classifier_cv_folds) == 5:
-        html_cv_table = f"""
-        <table class="thesis-table">
-            <thead>
                 <tr>
-                    <th>Fold</th>
-                    <th>Classifier F1-Macro</th>
+                    <td>Fold 1</td>
+                    <td>{classifier_cv_folds[0]:.3f}</td>
+                    <td>{regressor_cv_folds[0]:.3f}</td>
                 </tr>
-            </thead>
-            <tbody>
-                <tr><td>Fold 1</td><td>{classifier_cv_folds[0]:.3f}</td></tr>
-                <tr><td>Fold 2</td><td>{classifier_cv_folds[1]:.3f}</td></tr>
-                <tr><td>Fold 3</td><td>{classifier_cv_folds[2]:.3f}</td></tr>
-                <tr><td>Fold 4</td><td>{classifier_cv_folds[3]:.3f}</td></tr>
-                <tr><td>Fold 5</td><td>{classifier_cv_folds[4]:.3f}</td></tr>
+                <tr>
+                    <td>Fold 2</td>
+                    <td>{classifier_cv_folds[1]:.3f}</td>
+                    <td>{regressor_cv_folds[1]:.3f}</td>
+                </tr>
+                <tr>
+                    <td>Fold 3</td>
+                    <td>{classifier_cv_folds[2]:.3f}</td>
+                    <td>{regressor_cv_folds[2]:.3f}</td>
+                </tr>
+                <tr>
+                    <td>Fold 4</td>
+                    <td>{classifier_cv_folds[3]:.3f}</td>
+                    <td>{regressor_cv_folds[3]:.3f}</td>
+                </tr>
+                <tr>
+                    <td>Fold 5</td>
+                    <td>{classifier_cv_folds[4]:.3f}</td>
+                    <td>{regressor_cv_folds[4]:.3f}</td>
+                </tr>
             </tbody>
         </table>
         """
@@ -185,7 +185,10 @@ if metrics is not None:
         st.markdown(html_cv_table, unsafe_allow_html=True)
 
     else:
-        st.warning("5-fold cross-validation values are not available in model_metrics.pkl.")
+        st.warning(
+            "5-fold CV breakdown is incomplete. Check that model_metrics.pkl contains both "
+            "'classifier_cv_folds' and 'regressor_cv_folds'."
+        )
 
 else:
     st.warning("model_metrics.pkl not found. Model performance table will not be displayed.")
