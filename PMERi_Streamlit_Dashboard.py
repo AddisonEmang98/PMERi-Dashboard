@@ -3,6 +3,7 @@ from datetime import datetime
 import joblib
 import pandas as pd
 import streamlit as st
+import textwrap
 
 def get_pmeri_level(score):
     if score < 0.4:
@@ -45,7 +46,7 @@ st.header("Model Performance Matrix")
 
 if metrics is not None:
 
-    st.markdown("""
+    st.markdown(textwrap.dedent("""
     <style>
     .thesis-table {
         width: 100%;
@@ -71,11 +72,11 @@ if metrics is not None:
         background-color: rgba(59, 130, 246, 0.05);
     }
     </style>
-    """, unsafe_allow_html=True)
+    """), unsafe_allow_html=True)
 
     mse_value = metrics["regressor_rmse"] ** 2
 
-    html_metrics_table = f"""
+    html_metrics_table = textwrap.dedent(f"""
     <table class="thesis-table">
         <thead>
             <tr>
@@ -110,7 +111,6 @@ if metrics is not None:
                 <td>Cross-Validation Standard Deviation</td>
                 <td>{metrics["classifier_cv_std"]:.3f}</td>
             </tr>
-
             <tr>
                 <td rowspan="6"><b>Regression Framework</b><br>Continuous PMERi Score Predictor</td>
                 <td>R² Score</td>
@@ -138,7 +138,7 @@ if metrics is not None:
             </tr>
         </tbody>
     </table>
-    """
+    """)
 
     st.markdown(html_metrics_table, unsafe_allow_html=True)
 
@@ -149,7 +149,7 @@ if metrics is not None:
 
     if len(classifier_cv_folds) == 5 and len(regressor_cv_folds) == 5:
 
-        html_cv_table = f"""
+        html_cv_table = textwrap.dedent(f"""
         <table class="thesis-table">
             <thead>
                 <tr>
@@ -166,7 +166,7 @@ if metrics is not None:
                 <tr><td>Fold 5</td><td>{classifier_cv_folds[4]:.3f}</td><td>{regressor_cv_folds[4]:.3f}</td></tr>
             </tbody>
         </table>
-        """
+        """)
 
         st.markdown(html_cv_table, unsafe_allow_html=True)
 
@@ -175,7 +175,7 @@ if metrics is not None:
 
 else:
     st.warning("model_metrics.pkl not found. Model performance table will not be displayed.")
-
+    
 # =====================================
 # INPUT SECTION
 # =====================================
