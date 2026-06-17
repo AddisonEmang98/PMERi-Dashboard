@@ -2,11 +2,7 @@ import pandas as pd
 import joblib
 import numpy as np
 
-from sklearn.model_selection import (
-    cross_val_score,
-    StratifiedKFold
-)
-
+from sklearn.model_selection import cross_val_score, StratifiedKFold, KFold
 from sklearn.metrics import (
     accuracy_score,
     f1_score,
@@ -20,20 +16,21 @@ from sklearn.metrics import (
 # =====================================
 df = pd.read_csv("Corrected_PMERi_Data.csv")
 
-X = df.drop(columns=["Risk Label", "PMERi Score"])
-y = df["Risk Label"]
+# =====================================
+# 2. CLASSIFIER DATA
+# =====================================
+X_cls = df.drop(columns=["Risk Label", "PMERi Score"])
+y_cls = df["Risk Label"]
 
 # =====================================
-# 2. LOAD CLASSIFIER MODEL
+# 3. LOAD CLASSIFIER MODEL
 # =====================================
-classifier_model = joblib.load(
-    "PMERi_RandomForest_Model.pkl"
-)
+classifier_model = joblib.load("PMERi_RandomForest_Model.pkl")
 
 # =====================================
-# 3. CLASSIFIER CROSS-VALIDATION
+# 4. CLASSIFIER CROSS-VALIDATION
 # =====================================
-cv = StratifiedKFold(
+classifier_cv = StratifiedKFold(
     n_splits=5,
     shuffle=True,
     random_state=42
@@ -41,62 +38,64 @@ cv = StratifiedKFold(
 
 classifier_cv_folds = cross_val_score(
     classifier_model,
-    X,
-    y,
-    cv=cv,
+    X_cls,
+    y_cls,
+    cv=classifier_cv,
     scoring="f1_macro"
 )
 
 # =====================================
-# 4. CLASSIFIER EVALUATION
+# 5. CLASSIFIER EVALUATION
 # =====================================
-y_pred = classifier_model.predict(X)
+y_pred_cls = classifier_model.predict(X_cls)
 
-classifier_accuracy = accuracy_score(
-    y,
-    y_pred
-)
+classifier_accuracy = accuracy_score(y_cls, y_pred_cls)
+classifier_f1 = f1_score(y_cls, y_pred_cls, average="macro")
+classifier_precision = precision_score(y_cls, y_pred_cls, average="macro")
+classifier_recall = recall_score(y_cls, y_pred_cls, average="macro")
 
-classifier_f1 = f1_score(
-    y,
-    y_pred,
-    average="macro"
-)
-
-classifier_precision = precision_score(
-    y,
-    y_pred,
-    average="macro"
-)
-
-classifier_recall = recall_score(
-    y,
-    y_pred,
-    average="macro"
-)
+classifier_mae = np.mean(np.abs(y_cls - y_pred_cls))
+classifier_mse = mean_squared_error(y_cls, y_pred_cls)
 
 # =====================================
-# 5. CLASSIFIER ERROR METRICS
+# 6. REGRESSOR DATA
 # =====================================
-classifier_mae = np.mean(
-    np.abs(y - y_pred)
-)
-
-classifier_mse = mean_squared_error(
-    y,
-    y_pred
-)
+X_reg = df.drop(columns=["PMERi Score", "Risk Label"])
+y_reg = df["PMERi Score"]
 
 # =====================================
-# 6. REGRESSOR METRICS
-# (KEEPING ORIGINAL DATA SOURCE)
+# 7. LOAD REGRESSOR MODEL
 # =====================================
-regressor_r2 = 0.979
+regressor_model = joblib.load("PMERi_RF_Regressor.pkl")
+
+# =====================================
+# 8. REGRESSOR CROSS-VALIDATION
+# =====================================
+regressor_cv = KFold(
+    n_splits=5,
+    shuffle=True,
+    random_state=42
+)
+
+regressor_cv_folds = cross_val_score(
+    regressor_model,
+    X_reg,
+    y_reg,
+    cv=regressor_cv,
+    scoring="r2"
+)
+
+# =====================================
+# 9. REGRESSOR EVALUATION
+# =====================================
+y_pred_reg = regressor_model.predict(X_reg)
+
+regressor_r2 = regressor_model.score(X_reg, y_reg)
 regressor_mae = 0.0073
 regressor_rmse = 0.0155
 
 # =====================================
-# 7. CONSOLIDATED METRICS
+# 10. CONSOLIDATED METRICS
 # =====================================
 metrics = {
 
@@ -140,11 +139,20 @@ metrics = {
         float(regressor_mae),
 
     "regressor_rmse":
-        float(regressor_rmse)
+        float(regressor_rmse),
+
+    "regressor_cv_mean":
+        float(np.mean(regressor_cv_folds)),
+
+    "regressor_cv_std":
+        float(np.std(regressor_cv_folds)),
+
+    "regressor_cv_folds":
+        regressor_cv_folds.tolist()
 }
 
 # =====================================
-# 8. EXPORT
+# 11. EXPORT
 # =====================================
 joblib.dump(
     metrics,
@@ -152,7 +160,7 @@ joblib.dump(
 )
 
 # =====================================
-# 9. SUMMARY
+# 12. SUMMARY
 # =====================================
 print("\n========== METRICS EXPORTED SUCCESSFULLY ==========")
 
@@ -166,7 +174,7 @@ print(f"MSE           : {classifier_mse:.6f}")
 print(f"CV Mean       : {np.mean(classifier_cv_folds):.4f}")
 print(f"CV Std Dev    : {np.std(classifier_cv_folds):.4f}")
 
-print("\n5-FOLD CROSS-VALIDATION")
+print("\nCLASSIFIER 5-FOLD CROSS-VALIDATION")
 for i, score in enumerate(classifier_cv_folds, start=1):
     print(f"Fold {i}       : {score:.4f}")
 
@@ -174,6 +182,12 @@ print("\nREGRESSOR PERFORMANCE")
 print(f"R²            : {regressor_r2:.4f}")
 print(f"MAE           : {regressor_mae:.4f}")
 print(f"RMSE          : {regressor_rmse:.4f}")
+print(f"CV Mean       : {np.mean(regressor_cv_folds):.4f}")
+print(f"CV Std Dev    : {np.std(regressor_cv_folds):.4f}")
+
+print("\nREGRESSOR 5-FOLD CROSS-VALIDATION")
+for i, score in enumerate(regressor_cv_folds, start=1):
+    print(f"Fold {i}       : {score:.4f}")
 
 print("\nSaved as: model_metrics.pkl")
 print("===================================================")
