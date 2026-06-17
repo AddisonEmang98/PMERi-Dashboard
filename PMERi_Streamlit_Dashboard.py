@@ -43,8 +43,7 @@ st.caption("Predictive Model for Environmental Risk Index")
 # =====================================
 st.header("Model Performance Matrix")
 
-if metrics:
-    # High-contrast CSS styling injection for clean thesis table borders
+if metrics is not None:
     st.markdown("""
         <style>
         .thesis-table {
@@ -60,23 +59,20 @@ if metrics:
             font-weight: bold;
             padding: 12px;
             text-align: left;
-            border: 2px solid #3b82f6; /* High-contrast vibrant blue lines */
+            border: 2px solid #3b82f6;
         }
         .thesis-table td {
             padding: 12px;
-            border: 2px solid #3b82f6; /* High-contrast vibrant blue lines */
+            border: 2px solid #3b82f6;
             color: inherit;
         }
         .thesis-table tr:nth-child(even) {
-            background-color: rgba(59, 130, 246, 0.05); /* Soft background alternate tint */
+            background-color: rgba(59, 130, 246, 0.05);
         }
         </style>
     """, unsafe_allow_html=True)
 
-    st.subheader("Classification & Regression Evaluation Summary")
-
-    # Calculate Mean Squared Error from raw RMSE footprint
-    mse_value = metrics['regressor_rmse'] ** 2
+    mse_value = metrics["regressor_rmse"] ** 2
 
     html_metrics_table = f"""
     <table class="thesis-table">
@@ -89,57 +85,57 @@ if metrics:
         </thead>
         <tbody>
             <tr>
-                <td rowspan="6"><b>Classification Framework</b><br>(Discrete Risk Label Predictor)</td>
+                <td rowspan="6"><b>Classification Framework</b><br>Discrete Risk Label Predictor</td>
                 <td>Classifier Accuracy</td>
-                <td>{metrics['classifier_accuracy']:.3f}</td>
+                <td>{metrics["classifier_accuracy"]:.3f}</td>
             </tr>
             <tr>
                 <td>Classifier F1-Macro</td>
-                <td>{metrics['classifier_f1']:.3f}</td>
+                <td>{metrics["classifier_f1"]:.3f}</td>
             </tr>
             <tr>
                 <td>Precision</td>
-                <td>{metrics['classifier_precision']:.3f}</td>
+                <td>{metrics["classifier_precision"]:.3f}</td>
             </tr>
             <tr>
                 <td>Recall</td>
-                <td>{metrics['classifier_recall']:.3f}</td>
+                <td>{metrics["classifier_recall"]:.3f}</td>
             </tr>
             <tr>
-                <td>Cross-Validation Mean (F1-Macro)</td>
-                <td>{metrics['classifier_cv_mean']:.3f}</td>
+                <td>Cross-Validation Mean</td>
+                <td>{metrics["classifier_cv_mean"]:.3f}</td>
             </tr>
             <tr>
                 <td>Cross-Validation Standard Deviation</td>
-                <td>{metrics['classifier_cv_std']:.3f}</td>
+                <td>{metrics["classifier_cv_std"]:.3f}</td>
             </tr>
+
             <tr>
-                <td rowspan="4"><b>Regression Framework</b><br>(Continuous PMERi Predictor)</td>
+                <td rowspan="4"><b>Regression Framework</b><br>Continuous PMERi Score Predictor</td>
                 <td>R² Score</td>
-                <td>{metrics['regressor_r2']:.3f}</td>
+                <td>{metrics["regressor_r2"]:.3f}</td>
             </tr>
             <tr>
-                <td>Mean Squared Error (MSE)</td>
+                <td>Mean Squared Error</td>
                 <td>{mse_value:.5f}</td>
             </tr>
             <tr>
-                <td>Mean Absolute Error (MAE)</td>
-                <td>{metrics['regressor_mae']:.4f}</td>
+                <td>Mean Absolute Error</td>
+                <td>{metrics["regressor_mae"]:.4f}</td>
             </tr>
             <tr>
-                <td>Root Mean Squared Error (RMSE)</td>
-                <td>{metrics['regressor_rmse']:.4f}</td>
+                <td>Root Mean Squared Error</td>
+                <td>{metrics["regressor_rmse"]:.4f}</td>
             </tr>
         </tbody>
     </table>
     """
+
     st.markdown(html_metrics_table, unsafe_allow_html=True)
 
     # =====================================
-    # 5-FOLD CROSS-VALIDATION BREAKDOWN TABLE
+    # 5-FOLD CROSS-VALIDATION BREAKDOWN
     # =====================================
-    st.markdown(html_metrics_table, unsafe_allow_html=True)
-
     st.subheader("5-Fold Cross-Validation Breakdown")
 
     classifier_cv_folds = metrics.get("classifier_cv_folds", [])
@@ -147,25 +143,49 @@ if metrics:
 
     if len(classifier_cv_folds) == 5 and len(regressor_cv_folds) == 5:
         html_cv_table = f"""
-            <table class="thesis-table">
-                <thead>
-                    <tr>
-                        <th>Fold</th>
-                        <th>Classifier F1-Macro</th>
-                        <th>Regressor R²</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr><td>Fold 1</td><td>{classifier_cv_folds[0]:.3f}</td><td>{regressor_cv_folds[0]:.3f}</td></tr>
-                    <tr><td>Fold 2</td><td>{classifier_cv_folds[1]:.3f}</td><td>{regressor_cv_folds[1]:.3f}</td></tr>
-                    <tr><td>Fold 3</td><td>{classifier_cv_folds[2]:.3f}</td><td>{regressor_cv_folds[2]:.3f}</td></tr>
-                    <tr><td>Fold 4</td><td>{classifier_cv_folds[3]:.3f}</td><td>{regressor_cv_folds[3]:.3f}</td></tr>
-                    <tr><td>Fold 5</td><td>{classifier_cv_folds[4]:.3f}</td><td>{regressor_cv_folds[4]:.3f}</td></tr>
-                </tbody>
-            </table>
-            """
+        <table class="thesis-table">
+            <thead>
+                <tr>
+                    <th>Fold</th>
+                    <th>Classifier F1-Macro</th>
+                    <th>Regressor R²</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>Fold 1</td><td>{classifier_cv_folds[0]:.3f}</td><td>{regressor_cv_folds[0]:.3f}</td></tr>
+                <tr><td>Fold 2</td><td>{classifier_cv_folds[1]:.3f}</td><td>{regressor_cv_folds[1]:.3f}</td></tr>
+                <tr><td>Fold 3</td><td>{classifier_cv_folds[2]:.3f}</td><td>{regressor_cv_folds[2]:.3f}</td></tr>
+                <tr><td>Fold 4</td><td>{classifier_cv_folds[3]:.3f}</td><td>{regressor_cv_folds[3]:.3f}</td></tr>
+                <tr><td>Fold 5</td><td>{classifier_cv_folds[4]:.3f}</td><td>{regressor_cv_folds[4]:.3f}</td></tr>
+            </tbody>
+        </table>
+        """
 
         st.markdown(html_cv_table, unsafe_allow_html=True)
+
+    elif len(classifier_cv_folds) == 5:
+        html_cv_table = f"""
+        <table class="thesis-table">
+            <thead>
+                <tr>
+                    <th>Fold</th>
+                    <th>Classifier F1-Macro</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>Fold 1</td><td>{classifier_cv_folds[0]:.3f}</td></tr>
+                <tr><td>Fold 2</td><td>{classifier_cv_folds[1]:.3f}</td></tr>
+                <tr><td>Fold 3</td><td>{classifier_cv_folds[2]:.3f}</td></tr>
+                <tr><td>Fold 4</td><td>{classifier_cv_folds[3]:.3f}</td></tr>
+                <tr><td>Fold 5</td><td>{classifier_cv_folds[4]:.3f}</td></tr>
+            </tbody>
+        </table>
+        """
+
+        st.markdown(html_cv_table, unsafe_allow_html=True)
+
+    else:
+        st.warning("5-fold cross-validation values are not available in model_metrics.pkl.")
 
 else:
     st.warning("model_metrics.pkl not found. Model performance table will not be displayed.")
