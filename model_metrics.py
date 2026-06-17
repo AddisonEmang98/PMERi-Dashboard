@@ -2,7 +2,11 @@ import pandas as pd
 import joblib
 import numpy as np
 
-from sklearn.model_selection import cross_val_score, StratifiedKFold
+from sklearn.model_selection import (
+    cross_val_score,
+    StratifiedKFold
+)
+
 from sklearn.metrics import (
     accuracy_score,
     f1_score,
@@ -11,83 +15,165 @@ from sklearn.metrics import (
     mean_squared_error
 )
 
-# =========================
-# 1. Load dataset
-# =========================
+# =====================================
+# 1. LOAD DATASET
+# =====================================
 df = pd.read_csv("Corrected_PMERi_Data.csv")
 
 X = df.drop(columns=["Risk Label", "PMERi Score"])
 y = df["Risk Label"]
 
-# =========================
-# 2. Load trained classifier model
-# =========================
-model = joblib.load("PMERi_RandomForest_Model.pkl")
+# =====================================
+# 2. LOAD CLASSIFIER MODEL
+# =====================================
+classifier_model = joblib.load(
+    "PMERi_RandomForest_Model.pkl"
+)
 
-# =========================
-# 3. Cross-validation (F1 Macro)
-# =========================
-cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+# =====================================
+# 3. CLASSIFIER CROSS-VALIDATION
+# =====================================
+cv = StratifiedKFold(
+    n_splits=5,
+    shuffle=True,
+    random_state=42
+)
 
-cv_scores = cross_val_score(
-    model,
+classifier_cv_folds = cross_val_score(
+    classifier_model,
     X,
     y,
     cv=cv,
     scoring="f1_macro"
 )
 
-# =========================
-# 4. Predictions (full dataset evaluation)
-# =========================
-y_pred = model.predict(X)
+# =====================================
+# 4. CLASSIFIER EVALUATION
+# =====================================
+y_pred = classifier_model.predict(X)
 
-classifier_f1 = f1_score(y, y_pred, average="macro")
-classifier_acc = accuracy_score(y, y_pred)
-classifier_precision = precision_score(y, y_pred, average="macro")
-classifier_recall = recall_score(y, y_pred, average="macro")
+classifier_accuracy = accuracy_score(
+    y,
+    y_pred
+)
 
-# =========================
-# 5. ERROR METRICS
-# =========================
-classifier_mse = mean_squared_error(y, y_pred)
-classifier_mae = np.mean(np.abs(y - y_pred))  # ordinal interpretation
+classifier_f1 = f1_score(
+    y,
+    y_pred,
+    average="macro"
+)
 
-# =========================
-# 6. Metrics dictionary (FINAL THESIS FORMAT)
-# =========================
+classifier_precision = precision_score(
+    y,
+    y_pred,
+    average="macro"
+)
+
+classifier_recall = recall_score(
+    y,
+    y_pred,
+    average="macro"
+)
+
+# =====================================
+# 5. CLASSIFIER ERROR METRICS
+# =====================================
+classifier_mae = np.mean(
+    np.abs(y - y_pred)
+)
+
+classifier_mse = mean_squared_error(
+    y,
+    y_pred
+)
+
+# =====================================
+# 6. REGRESSOR METRICS
+# (KEEPING ORIGINAL DATA SOURCE)
+# =====================================
+regressor_r2 = 0.979
+regressor_mae = 0.0073
+regressor_rmse = 0.0155
+
+# =====================================
+# 7. CONSOLIDATED METRICS
+# =====================================
 metrics = {
-    "classifier_f1": float(classifier_f1),
-    "classifier_accuracy": float(classifier_acc),
-    "classifier_precision": float(classifier_precision),
-    "classifier_recall": float(classifier_recall),
 
-    "classifier_mae": float(classifier_mae),
-    "classifier_mse": float(classifier_mse),
+    # =================================
+    # CLASSIFIER
+    # =================================
+    "classifier_accuracy":
+        float(classifier_accuracy),
 
-    "classifier_cv_mean": float(cv_scores.mean()),
-    "classifier_cv_std": float(cv_scores.std()),
-    "classifier_cv_folds": cv_scores.tolist(),
+    "classifier_f1":
+        float(classifier_f1),
 
-    # regressor values (unchanged)
-    "regressor_r2": 0.979,
-    "regressor_mae": 0.0073,
-    "regressor_rmse": 0.0155
+    "classifier_precision":
+        float(classifier_precision),
+
+    "classifier_recall":
+        float(classifier_recall),
+
+    "classifier_mae":
+        float(classifier_mae),
+
+    "classifier_mse":
+        float(classifier_mse),
+
+    "classifier_cv_mean":
+        float(np.mean(classifier_cv_folds)),
+
+    "classifier_cv_std":
+        float(np.std(classifier_cv_folds)),
+
+    "classifier_cv_folds":
+        classifier_cv_folds.tolist(),
+
+    # =================================
+    # REGRESSOR
+    # =================================
+    "regressor_r2":
+        float(regressor_r2),
+
+    "regressor_mae":
+        float(regressor_mae),
+
+    "regressor_rmse":
+        float(regressor_rmse)
 }
 
-# =========================
-# 7. Save metrics
-# =========================
-joblib.dump(metrics, "model_metrics.pkl")
+# =====================================
+# 8. EXPORT
+# =====================================
+joblib.dump(
+    metrics,
+    "model_metrics.pkl"
+)
 
-print("\n========== MODEL METRICS SAVED ==========")
-print("Classifier F1:", classifier_f1)
-print("Classifier Accuracy:", classifier_acc)
-print("Classifier Precision:", classifier_precision)
-print("Classifier Recall:", classifier_recall)
-print("Classifier MAE:", classifier_mae)
-print("Classifier MSE:", classifier_mse)
-print("CV Mean F1:", cv_scores.mean())
-print("CV Std F1:", cv_scores.std())
-print("CV Folds:", cv_scores.tolist())
-print("Metrics saved to model_metrics.pkl")
+# =====================================
+# 9. SUMMARY
+# =====================================
+print("\n========== METRICS EXPORTED SUCCESSFULLY ==========")
+
+print("\nCLASSIFIER PERFORMANCE")
+print(f"Accuracy      : {classifier_accuracy:.4f}")
+print(f"F1-Macro      : {classifier_f1:.4f}")
+print(f"Precision     : {classifier_precision:.4f}")
+print(f"Recall        : {classifier_recall:.4f}")
+print(f"MAE           : {classifier_mae:.6f}")
+print(f"MSE           : {classifier_mse:.6f}")
+print(f"CV Mean       : {np.mean(classifier_cv_folds):.4f}")
+print(f"CV Std Dev    : {np.std(classifier_cv_folds):.4f}")
+
+print("\n5-FOLD CROSS-VALIDATION")
+for i, score in enumerate(classifier_cv_folds, start=1):
+    print(f"Fold {i}       : {score:.4f}")
+
+print("\nREGRESSOR PERFORMANCE")
+print(f"R²            : {regressor_r2:.4f}")
+print(f"MAE           : {regressor_mae:.4f}")
+print(f"RMSE          : {regressor_rmse:.4f}")
+
+print("\nSaved as: model_metrics.pkl")
+print("===================================================")
